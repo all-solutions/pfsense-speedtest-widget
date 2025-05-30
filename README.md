@@ -1,8 +1,10 @@
 # Speedtest.net dashboard widget for pfSense
 
+**Forked from [Leon Straathof](https://github.com/LeonStraathof/pfsense-speedtest-widget) (repo doesn't seem to be maintained anymore)**
+
 This new widget is made to replace a similar widget created in the past by Alon Noy. That widget however used the not official speedtest-cli that is no longer supported. The no longer supported version of speedtest-cli has a limitation that it can only list and connect 10 geographic chosen test servers which are in most cases never the best server for your tests. And also the test results are not the best when compared with the original speedtest-cli from speedtest.net.
 
-![Screenshot](https://github.com/LeonStraathof/pfsense-speedtest-widget/blob/main/Widget-screenshot.png?raw=true)
+![Screenshot](https://github.com/all-solutions/pfsense-speedtest-widget/blob/main/Widget-screenshot.png?raw=true)
 
 ## INSTALL
 
@@ -50,3 +52,10 @@ pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```
 rm -f /usr/local/www/widgets/widgets/speedtest.widget.php
 ```
+
+
+## TO-DO
+
+- Try to implement VPN interfaces as speedtest gateways
+
+

@@ -64,14 +64,20 @@ Diagnotics-->Command Prompt-->Execute Shell Command:
 
 require_once("guiconfig.inc");
 
-if (is_numeric($_REQUEST['serverid'])) { 
+if (is_numeric($_REQUEST['serverid'])) {
+	
+	// COMPOSE INTERFACE SELECTION SWITCH (IF SPECIFIED BY THE USER)
+	$ifaceipswitch = "";
+	if ($_REQUEST['iface'] !== "0.0.0.0")
+		$ifaceipswitch = " --ip=" . $_REQUEST['iface'];
+
 	if ($_REQUEST['serverid']==0){
 		//AUTOSELECT
-		$results = shell_exec("speedtest -f json --selection-details --accept-license --accept-gdpr");
+		$results = shell_exec("speedtest -f json --selection-details --accept-license --accept-gdpr" . $ifaceipswitch);
 	} else {
 		//MANUAL SERVER SELECTION
-		$serverlist = shell_exec("speedtest -f json --servers --accept-license --accept-gdpr");
-		$results = shell_exec("speedtest -f json --server-id=" . $_REQUEST['serverid'] . " --selection-details --accept-license --accept-gdpr");
+		$serverlist = shell_exec("speedtest -f json --servers --accept-license --accept-gdpr" . $ifaceipswitch);
+		$results = shell_exec("speedtest -f json --server-id=" . $_REQUEST['serverid'] . $ifaceipswitch . " --selection-details --accept-license --accept-gdpr");
 		$resultsobj = json_decode($results,true);
 		$serverlistobj = json_decode($serverlist,true);
 		foreach ($serverlistobj['servers'] as &$server) {
@@ -121,6 +127,23 @@ if (is_numeric($_REQUEST['serverid'])) {
 		<td colspan="2" id="speedtest-isp">N/A</td>
 	</tr>
 	<tr>
+		<td>Interface</td>
+		<td colspan="2">
+			<select name="speedtest-iface" id="speedtest-iface" style="width: 100%">
+				<option value="0.0.0.0">Auto</option>
+<?
+				//build interface list for widget use
+				$ifdescrs = get_configured_interface_with_descr();
+
+    				foreach ($ifdescrs as $ifdescr => $ifname) {
+					$ifinfo = get_interface_info($ifdescr);
+					echo('<option value="' . htmlspecialchars($ifinfo['ipaddr']) . '">' . $ifname . ' (' . htmlspecialchars($ifinfo['ipaddr']) . ')</option>');
+				}
+?>
+			</select>
+		</td>
+	</tr>
+	<tr>
 		<td>Host</td>
 		<!--<td colspan="2" id="speedtest-host">N/A</td>-->
 		<td colspan="2">
@@ -140,11 +163,22 @@ function update_result(results) {
     if(results != null) {
     	var date = new Date(results.timestamp);
     	$("#speedtest-ts").html(date);
-    	$("#speedtest-ping").html(results.ping.latency.toFixed(2) + "<small> ms</small>");
-    	$("#speedtest-download").html((results.download.bandwidth / 1000000 * 8).toFixed(2) + "<small> Mbps </small><h5>(" + results.download.latency.iqm + "<small> ms</small>)</h5>");
-    	$("#speedtest-upload").html((results.upload.bandwidth / 1000000 * 8).toFixed(2) + "<small> Mbps </small><h5>(" + results.upload.latency.iqm + "<small> ms</small>)</h5>");
-    	$("#speedtest-packetloss").html(results.packetLoss);
-		$("#speedtest-isp").html(results.isp + "<small> (" + results.interface.externalIp + ")</small>");
+    	$("#speedtest-ping").html(results.ping === undefined ? "Undefined" : results.ping.latency.toFixed(2) + "<small> ms</small>");
+    	$("#speedtest-download").html(results.download === undefined ? "Undefined" : (results.download.bandwidth / 1000000 * 8).toFixed(2) + "<small> Mbps </small><h5>(" + results.download.latency.iqm + "<small> ms</small>)</h5>");
+    	$("#speedtest-upload").html(results.upload === undefined ? "Undefined" : (results.upload.bandwidth / 1000000 * 8).toFixed(2) + "<small> Mbps </small><h5>(" + results.upload.latency.iqm + "<small> ms</small>)</h5>");
+    	$("#speedtest-packetloss").html(results.packetLoss === undefined ? "Undefined" : results.packetLoss);
+	$("#speedtest-isp").html(results.isp === undefined ? "Undefined" : results.isp + "<small> (" + results.interface.externalIp + ")</small>");
+	if (results.server === undefined) {
+		$('#speedtest-host')
+			.find('option')
+			.remove()
+			.end()
+			.append($('<option>', {
+    			value: 0,
+    			text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
+			}))
+		;
+	} else {
 		$('#speedtest-host')
 			.find('option')
 			.remove()
@@ -159,6 +193,7 @@ function update_result(results) {
     			text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
 			}))
 		;
+		//alert(results.serverSelection);
 		var servers = results.serverSelection.servers;
 		//alert(JSON.stringify(servers, null, '\t'));
 		servers.sort(function(a, b){
@@ -176,8 +211,9 @@ function update_result(results) {
 				}));
 			}
 		});
-		$("#Ookla").attr("href", results.result.url);
-		$("#Ookla").show();
+	}	
+	$("#Ookla").attr("href", results.result === undefined ? "" : results.result.url);
+	$("#Ookla").show();
     } else {
     	$("#speedtest-ts").html("Speedtest failed");
     	$("#speedtest-ping").html("N/A");
@@ -210,7 +246,8 @@ function update_speedtest() {
         url: "/widgets/widgets/speedtest.widget.php",
         dataType: 'json',
         data: {
-            serverid: $( "#speedtest-host option:selected" ).val()
+            serverid: $( "#speedtest-host option:selected" ).val(),
+            iface: $( "#speedtest-iface option:selected" ).val()
         },
         success: function(data) {
             update_result(data);

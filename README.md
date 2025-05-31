@@ -45,7 +45,8 @@ mv -f /tmp/speedtest.widget.php /usr/local/www/widgets/widgets/
 ```
 - pfSense-main-menu:<br>
 Click on "+" right from "Available Widgets" and add the speedtest widget.<br>
-![image](https://github.com/user-attachments/assets/01a211f5-2813-4f16-9c7f-457c6b7bcccc)
+![image](https://github.com/user-attachments/assets/01a211f5-2813-4f16-9c7f-457c6b7bcccc)<br>
+(don't forget to click "save" after that)
 	
 ## UNINSTALL
 

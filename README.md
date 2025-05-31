@@ -49,6 +49,7 @@ Click on "+" right from "Available Widgets" and add the speedtest widget.<br>
 (don't forget to click "save" after that)
 	
 ## UNINSTALL
+It is enough to remove the widget from the dashboard. After that, neither the widget nor the speedtest-cli will be triggered anymore.<br>If you want to delete the associated files completely from pfSense:
 
 - pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```

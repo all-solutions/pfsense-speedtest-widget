@@ -65,7 +65,6 @@
 require_once("guiconfig.inc");
 
 if (is_numeric($_REQUEST['serverid'])) {
-    
     // COMPOSE INTERFACE SELECTION SWITCH (IF SPECIFIED BY THE USER)
     $ifaceipswitch = "";
     if ($_REQUEST['iface'] !== "0.0.0.0") {
@@ -78,13 +77,13 @@ if (is_numeric($_REQUEST['serverid'])) {
     } else {
         // MANUAL SERVER SELECTION
         $serverlist = shell_exec("speedtest -f json --servers --accept-license --accept-gdpr" . $ifaceipswitch);
-        $results = shell_exec("speedtest -f json --server-id=" . $_REQUEST['serverid'] . $ifaceipswitch . " --selection-details --accept-license --accept-gdpr");
+        $results    = shell_exec("speedtest -f json --server-id=" . $_REQUEST['serverid'] . $ifaceipswitch . " --selection-details --accept-license --accept-gdpr");
         $resultsobj = json_decode($results, true);
         $serverlistobj = json_decode($serverlist, true);
 
         foreach ($serverlistobj['servers'] as &$server) {
             $latency = shell_exec("ping -c 1 -W 1 " . $server['host'] . " 2>&1 | awk -F'/' 'END{ print (/^round-trip/? $5:\"99999\") }'");
-            $server = (object) array('latency' => (float)$latency, "server" => $server);
+            $server  = (object) ['latency' => (float)$latency, 'server' => $server];
         }
         $resultsobj['serverSelection']['servers'] = $serverlistobj['servers'];
         $results = json_encode($resultsobj);
@@ -129,11 +128,11 @@ if (is_numeric($_REQUEST['serverid'])) {
         <td colspan="2">
             <select name="speedtest-iface" id="speedtest-iface" style="width: 100%">
                 <option value="0.0.0.0">Auto</option>
-<?
+<?php
                 // build interface list for widget use
                 $ifdescrs = get_configured_interface_with_descr();
 
-                // nur WAN-Interfaces: prüfen, ob eine Gateway-IP konfiguriert ist
+                // initially only WAN interfaces (have a gateway IP)
                 $filtered_ifdescrs = [];
                 foreach ($ifdescrs as $ifdescr => $ifname) {
                     $ifinfo = get_interface_info($ifdescr);
@@ -142,10 +141,25 @@ if (is_numeric($_REQUEST['serverid'])) {
                     }
                 }
 
+                // then additional VPN interfaces (tun/tap/ovpn)
+                if (!empty($config['interfaces'])) {
+                    foreach ($config['interfaces'] as $ifdescr => $ifcfg) {
+                        if (isset($filtered_ifdescrs[$ifdescr])) {
+                            continue;
+                        }
+                        if (preg_match('/^(tun|tap|ovpn)/i', $ifcfg['if'])) {
+                            // Use description from get_configured_interface_with_descr or from config
+                            $vpn_name = isset($ifdescrs[$ifdescr]) ? $ifdescrs[$ifdescr] : ($ifcfg['descr'] ?: $ifdescr);
+                            $filtered_ifdescrs[$ifdescr] = $vpn_name;
+                        }
+                    }
+                }
+
+                // Output of the filtered interfaces
                 foreach ($filtered_ifdescrs as $ifdescr => $ifname) {
                     $ifinfo = get_interface_info($ifdescr);
-                    echo('<option value="' . htmlspecialchars($ifinfo['ipaddr']) . '">'
-                        . htmlspecialchars($ifname) . ' (' . htmlspecialchars($ifinfo['ipaddr']) . ')</option>');
+                    echo '<option value="' . htmlspecialchars($ifinfo['ipaddr']) . '">'
+                       . htmlspecialchars($ifname) . ' (' . htmlspecialchars($ifinfo['ipaddr']) . ')</option>';
                 }
 ?>
             </select>
@@ -153,10 +167,9 @@ if (is_numeric($_REQUEST['serverid'])) {
     </tr>
     <tr>
         <td>Host</td>
-        <!-- <td colspan="2" id="speedtest-host">N/A</td> -->
         <td colspan="2">
             <select name="speedtest-host" id="speedtest-host" style="width: 100%">
-                <option value=0>AUTOSELECT AND REFRESH CLOSEST SERVER LIST</option>
+                <option value="0">AUTOSELECT AND REFRESH CLOSEST SERVER LIST</option>
             </select>
         </td>
     </tr>
@@ -168,29 +181,32 @@ if (is_numeric($_REQUEST['serverid'])) {
 <a id="Ookla" href="#" target="_blank" style="display: none;"> <i class="fa fa-external-link"></i></a>
 <script type="text/javascript">
 function update_result(results) {
-    if(results != null) {
+    if (results != null) {
         var date = new Date(results.timestamp);
         $("#speedtest-ts").html(date);
-        $("#speedtest-ping").html(results.ping === undefined ? "Undefined" : results.ping.latency.toFixed(2) + "<small> ms</small>");
-        $("#speedtest-download").html(results.download === undefined ? "Undefined" : (results.download.bandwidth / 1000000 * 8).toFixed(2) + "<small> Mbps </small><h5>(" + results.download.latency.iqm + "<small> ms</small>)</h5>");
-        $("#speedtest-upload").html(results.upload === undefined ? "Undefined" : (results.upload.bandwidth / 1000000 * 8).toFixed(2) + "<small> Mbps </small><h5>(" + results.upload.latency.iqm + "<small> ms</small>)</h5>");
-        $("#speedtest-packetloss").html(results.packetLoss === undefined ? "Undefined" : results.packetLoss);
-        $("#speedtest-isp").html(results.isp === undefined ? "Undefined" : results.isp + "<small> (" + results.interface.externalIp + ")</small>");
+        $("#speedtest-ping").html(results.ping === undefined
+            ? "Undefined"
+            : results.ping.latency.toFixed(2) + "<small> ms</small>");
+        $("#speedtest-download").html(results.download === undefined
+            ? "Undefined"
+            : (results.download.bandwidth / 1000000 * 8).toFixed(2) + "<small> Mbps</small><h5>(" + results.download.latency.iqm + "<small> ms</small>)</h5>");
+        $("#speedtest-upload").html(results.upload === undefined
+            ? "Undefined"
+            : (results.upload.bandwidth / 1000000 * 8).toFixed(2) + "<small> Mbps</small><h5>(" + results.upload.latency.iqm + "<small> ms</small>)</h5>");
+        $("#speedtest-packetloss").html(results.packetLoss === undefined
+            ? "Undefined"
+            : results.packetLoss);
+        $("#speedtest-isp").html(results.isp === undefined
+            ? "Undefined"
+            : results.isp + "<small> (" + results.interface.externalIp + ")</small>");
 
         if (results.server === undefined) {
-            $('#speedtest-host')
-                .find('option')
-                .remove()
-                .end()
-                .append($('<option>', {
-                    value: 0,
-                    text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
-                }));
+            $('#speedtest-host').empty().append($('<option>', {
+                value: 0,
+                text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
+            }));
         } else {
-            $('#speedtest-host')
-                .find('option')
-                .remove()
-                .end()
+            $('#speedtest-host').empty()
                 .append($('<option>', {
                     value: results.server.id,
                     text: results.server.name + " " + results.server.location + " " + results.server.country + " id=" + results.server.id + " (" + results.ping.latency.toFixed(2) + "ms)"
@@ -201,41 +217,31 @@ function update_result(results) {
                     text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
                 }));
             var servers = results.serverSelection.servers;
-            servers.sort(function(a, b){
+            servers.sort(function(a, b) {
                 if (typeof a.latency === "undefined" || typeof b.latency === "undefined") return 0;
-                var a1= a.latency, b1= b.latency;
-                if(a1== b1) return 0;
-                return a1> b1? 1: -1;
+                return a.latency - b.latency;
             });
-            $.each(servers, function (i, server) {
-                if(results.server.id !== server.server.id){
-                    if(server.latency===99999){var latency="Request timed out"}else{var latency=server.latency.toFixed(2) + "ms"}
+            $.each(servers, function(i, server) {
+                if (results.server.id !== server.server.id) {
+                    var latency = server.latency === 99999
+                        ? "Request timed out"
+                        : server.latency.toFixed(2) + "ms";
                     $('#speedtest-host').append($('<option>', {
                         value: server.server.id,
-                        text : server.server.name + " " + server.server.location + " " + server.server.country + " id=" + server.server.id + " (" + latency + ")"
+                        text: server.server.name + " " + server.server.location + " " + server.server.country + " id=" + server.server.id + " (" + latency + ")"
                     }));
                 }
             });
         }
-        $("#Ookla").attr("href", results.result === undefined ? "" : results.result.url);
-        $("#Ookla").show();
+        $("#Ookla").attr("href", results.result === undefined ? "" : results.result.url).show();
     } else {
         $("#speedtest-ts").html("Speedtest failed");
-        $("#speedtest-ping").html("N/A");
-        $("#speedtest-download").html("N/A");
-        $("#speedtest-upload").html("N/A");
-        $("#speedtest-upload").html("N/A");
-        $("#speedtest-packetloss").html("N/A");
-        $("#speedtest-isp").html("N/A");
-        $('#speedtest-host')
-            .find('option')
-            .remove()
-            .end()
-            .append($('<option>', {
-                value: 0,
-                text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
-            }))
-            .val(0);
+        $("#speedtest-ping, #speedtest-download, #speedtest-upload, #speedtest-packetloss, #speedtest-isp")
+            .html("N/A");
+        $('#speedtest-host').empty().append($('<option>', {
+            value: 0,
+            text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
+        }));
     }
 }
 
@@ -249,8 +255,8 @@ function update_speedtest() {
         url: "/widgets/widgets/speedtest.widget.php",
         dataType: 'json',
         data: {
-            serverid: $("#speedtest-host option:selected").val(),
-            iface: $("#speedtest-iface option:selected").val()
+            serverid: $("#speedtest-host").val(),
+            iface:    $("#speedtest-iface").val()
         },
         success: function(data) {
             update_result(data);
@@ -266,11 +272,11 @@ function update_speedtest() {
         }
     });
 }
+
 events.push(function() {
     var target = $("#updspeed").closest(".panel").find(".widget-heading-icon");
     $("#Ookla").prependTo(target);
-    $("#updspeed").prependTo(target).show();
-    $('#updspeed').click(function() {
+    $("#updspeed").prependTo(target).show().click(function() {
         update_speedtest();
         return false;
     });

@@ -7,7 +7,7 @@
 - added filter to only show WAN interfaces in interface selection
 - added additional VPN interfaces (tun/tap/ovpn) as speedtest sources<br>
 ![image](https://github.com/user-attachments/assets/79f5b910-6c3e-4ccd-a877-eacf88c87588)
-
+- added easier way to download **speedtest.widget.php** via [Releases](https://github.com/all-solutions/pfsense-speedtest-widget/releases) (just need to klick on it for starting download)
 
 ___
 This new widget is made to replace a similar widget created in the past by Alon Noy. That widget however used the not official speedtest-cli that is no longer supported. The no longer supported version of speedtest-cli has a limitation that it can only list and connect 10 geographic chosen test servers which are in most cases never the best server for your tests. And also the test results are not the best when compared with the original speedtest-cli from speedtest.net.
@@ -36,6 +36,8 @@ pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```
 speedtest --accept-gdpr
 ```
+Download latest [Release](https://github.com/all-solutions/pfsense-speedtest-widget/releases) of the widget
+
 pfSense-main-menu-->Diagnotics-->Command Prompt-->Upload File:
 speedtest.widget.php
 

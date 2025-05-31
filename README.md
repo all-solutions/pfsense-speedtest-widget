@@ -1,4 +1,4 @@
-# Speedtest.net dashboard widget for pfSense
+# Speedtest.net dashboard widget for pfSense [![GitHub release](https://img.shields.io/github/release/all-solutions/pfsense-speedtest-widget?include_prereleases=&sort=semver&color=blue)](https://github.com/all-solutions/pfsense-speedtest-widget/releases/latest)
 
 **Forked from [Leon Straathof](https://github.com/LeonStraathof/pfsense-speedtest-widget) (repo doesn't seem to be maintained anymore)**
 
@@ -34,7 +34,7 @@ speedtest --accept-license
 ```
 speedtest --accept-gdpr
 ```
-- Download latest [Release](https://github.com/all-solutions/pfsense-speedtest-widget/releases) of the widget
+- Download latest [Release](https://github.com/all-solutions/pfsense-speedtest-widget/releases/latest) of the widget
 
 - pfSense-main-menu-->Diagnotics-->Command Prompt-->Upload File:
 speedtest.widget.php

@@ -28,7 +28,7 @@ env ABI=FreeBSD:13:x86:64 pkg add "https://install.speedtest.net/app/cli/ookla-s
 ```
 - pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```
-- speedtest --accept-license
+speedtest --accept-license
 ```
 - pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```

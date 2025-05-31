@@ -16,53 +16,51 @@ This new widget is made to replace a similar widget created in the past by Alon 
 
 ## INSTALL
 
-Go to https://www.speedtest.net/apps/cli
+- Go to https://www.speedtest.net/apps/cli
 
-Click FreeBSD and find URL of newest version.
+- Click FreeBSD and find URL of newest version.
 
-pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
-
-(Use the URL found on the speedtest.net website and the FreeBSD version number in env ABI must match the version number in the URL)
-
+- pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command: <br>
+(Use the URL found on the speedtest.net website and the FreeBSD version number in env ABI must match the version number in the URL)<br>
 There is a know conflict between the not offical speedtest-cli and the offical version from speedtest.net. You can not have both installed at the same time. See this reported issue: https://github.com/LeonStraathof/pfsense-speedtest-widget/issues/2
 ```	
 env ABI=FreeBSD:13:x86:64 pkg add "https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-freebsd13-x86_64.pkg"
 ```
-pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
+- pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```
-speedtest --accept-license
+- speedtest --accept-license
 ```
-pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
+- pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```
 speedtest --accept-gdpr
 ```
-Download latest [Release](https://github.com/all-solutions/pfsense-speedtest-widget/releases) of the widget
+- Download latest [Release](https://github.com/all-solutions/pfsense-speedtest-widget/releases) of the widget
 
-pfSense-main-menu-->Diagnotics-->Command Prompt-->Upload File:
+- pfSense-main-menu-->Diagnotics-->Command Prompt-->Upload File:
 speedtest.widget.php
 
-pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
+- pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```
 mv -f /tmp/speedtest.widget.php /usr/local/www/widgets/widgets/
 ```
-pfSense-main-menu-->Status-->Dashboard:
+- pfSense-main-menu-->Status-->Dashboard:<br>
 Add the speedtest widget.
 	
 ## UNINSTALL
 
-pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
+- pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```
 pkg info | grep speedtest
 ```
-pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
+- pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:<br>
 (use the package name found in the first step)	
 ```
 pkg delete -y speedtest-1.2.0.84-1.ea6b6773cf
 ```
-pfSense-main-menu-->Status-->Dashboard:
+- pfSense-main-menu-->Status-->Dashboard:<br>
 Remove the speedtest widget.
 
-pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
+- pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```
 rm -f /usr/local/www/widgets/widgets/speedtest.widget.php
 ```

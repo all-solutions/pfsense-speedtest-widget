@@ -10,7 +10,7 @@
 - added easier way to download **speedtest.widget.php** via [Releases](https://github.com/all-solutions/pfsense-speedtest-widget/releases) (just need to klick on it for starting download)
 
 ___
-This new widget is made to replace a similar widget created in the past by Alon Noy. That widget however used the not official speedtest-cli that is no longer supported. The no longer supported version of speedtest-cli has a limitation that it can only list and connect 10 geographic chosen test servers which are in most cases never the best server for your tests. And also the test results are not the best when compared with the original speedtest-cli from speedtest.net.
+This new widget is made to replace a similar widget created in the past by Alon Noy. That widget however used the not official speedtest-cli that is no longer supported. The no longer supported version of speedtest-cli has a limitation that it can only list and connect 10 geographic choosen test servers which are in most cases never the best server for your tests. And also the test results are not the best when compared with the original speedtest-cli from speedtest.net.
 
 ![Screenshot](https://github.com/all-solutions/pfsense-speedtest-widget/blob/main/Widget-screenshot.png?raw=true)
 
@@ -18,7 +18,7 @@ This new widget is made to replace a similar widget created in the past by Alon 
 
 - Go to https://www.speedtest.net/apps/cli
 
-- Click FreeBSD and find URL of newest version.
+- Scroll down, click under "Install Options" on FreeBSD and find the URL of newest version<br>(for pfSense with FreeBSD 14 use the FreeBSD 13 version of cli)
 
 - pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command: <br>
 (Use the URL found on the speedtest.net website and the FreeBSD version number in env ABI must match the version number in the URL)<br>
@@ -43,8 +43,9 @@ speedtest.widget.php
 ```
 mv -f /tmp/speedtest.widget.php /usr/local/www/widgets/widgets/
 ```
-- pfSense-main-menu-->Status-->Dashboard:<br>
-Add the speedtest widget.
+- pfSense-main-menu:<br>
+Click on "+" right from "Available Widgets" and add the speedtest widget.<br>
+![image](https://github.com/user-attachments/assets/01a211f5-2813-4f16-9c7f-457c6b7bcccc)
 	
 ## UNINSTALL
 

@@ -7,8 +7,10 @@
  * The original by Alon Noy can be found here: https://github.com/aln-1/pfsense-speedtest-widget
  * Copyright (c) 2024 Leon Straathof (modified version to work with official speedtest cli)
  *
+ * Copyright (c) 2025 all-solutions IT-Consulting (forked from Leon Straathof due to non mantained repo)
+ *
  * Licensed under the GPL, Version 3.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     https://www.gnu.org/licenses/gpl-3.0.txt
@@ -34,41 +36,72 @@
  * INSTALL
  * -------
  * Goto https://www.speedtest.net/apps/cli
- * Click FreeBSD and find URL of newest version.
- * Diagnostics-->Command Prompt-->Execute Shell Command:
+ * Click FreeBSD and find the URL of the newest version.
+ * Diagnostics → Command Prompt → Execute Shell Command:
  *     env ABI=FreeBSD:13:x86:64 pkg add "https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-freebsd13-x86_64.pkg"
- *     (Use the URL found on the speedtest.net website and the FreeBSD version number in env ABI must match the version number in the URL)
- * Diagnostics-->Command Prompt-->Execute Shell Command:
+ *     (Use the URL found on the speedtest.net website; the FreeBSD ABI must match.)
+ * Diagnostics → Command Prompt → Execute Shell Command:
  *     speedtest --accept-license
- * Diagnostics-->Command Prompt-->Execute Shell Command:
+ * Diagnostics → Command Prompt → Execute Shell Command:
  *     speedtest --accept-gdpr
- * Diagnostics-->Command Prompt-->Upload File:
+ * Diagnostics → Command Prompt → Upload File:
  *     speedtest.widget.php
- * Diagnostics-->Command Prompt-->Execute Shell Command:
+ * Diagnostics → Command Prompt → Execute Shell Command:
  *     mv -f /tmp/speedtest.widget.php /usr/local/www/widgets/widgets/
- * Status-->Dashboard:
+ * Status → Dashboard:
  *     Add the speedtest widget.
  *
  * UNINSTALL
  * ----------
- * Diagnostics-->Command Prompt-->Execute Shell Command:
+ * Diagnostics → Command Prompt → Execute Shell Command:
  *     pkg info | grep speedtest
- * Diagnostics-->Command Prompt-->Execute Shell Command:
+ * Diagnostics → Command Prompt → Execute Shell Command:
  *     pkg delete -y speedtest-1.2.0.84-1.ea6b6773cf
- *     (use the package name found in the first step)
- * Status-->Dashboard:
+ *     (use the package name from the first step)
+ * Status → Dashboard:
  *     Remove the speedtest widget.
- * Diagnostics-->Command Prompt-->Execute Shell Command:
+ * Diagnostics → Command Prompt → Execute Shell Command:
  *     rm -f /usr/local/www/widgets/widgets/speedtest.widget.php
  */
 
 require_once("guiconfig.inc");
 
-// Path for saving the results in a separate file instead of in config.xml:
-define('SPEEDTEST_RESULT_FILE', '/var/db/speedtest_result.json');
+// If the old single-result file exists, delete it to avoid conflicts.
+$legacy_file = '/var/db/speedtest_result.json';
+if (file_exists($legacy_file)) {
+    @unlink($legacy_file);
+}
+
+// Path for saving the history file (JSON array with up to 10 entries).
+define('SPEEDTEST_HISTORY_FILE', '/var/db/speedtest_history.json');
+
+// Helper function: Load existing history as a PHP array (or return an empty array).
+function load_history() {
+    if (!file_exists(SPEEDTEST_HISTORY_FILE)) {
+        return [];
+    }
+    $raw = @file_get_contents(SPEEDTEST_HISTORY_FILE);
+    if ($raw === false) {
+        return [];
+    }
+    $arr = json_decode($raw, true);
+    if (!is_array($arr)) {
+        return [];
+    }
+    return $arr;
+}
+
+// Helper function: Save a PHP array back to the file (in JSON format).
+function save_history(array $history) {
+    // Limit to a maximum of 10 entries: if more, remove the oldest.
+    while (count($history) > 10) {
+        array_shift($history);
+    }
+    @file_put_contents(SPEEDTEST_HISTORY_FILE, json_encode($history));
+}
 
 if (is_numeric($_REQUEST['serverid'])) {
-    // COMPOSE INTERFACE SELECTION SWITCH (IF SPECIFIED BY THE USER)
+    // Compose interface selection switch (if specified by the user).
     $ifaceipswitch = "";
     if ($_REQUEST['iface'] !== "0.0.0.0") {
         $ifaceipswitch = " --ip=" . $_REQUEST['iface'];
@@ -93,21 +126,48 @@ if (is_numeric($_REQUEST['serverid'])) {
     }
 
     if (($results !== null) && (json_decode($results) !== null)) {
-        // Write the result to a file instead of config.xml
-        @file_put_contents(SPEEDTEST_RESULT_FILE, $results);
-        echo $results;
+        // Add a "retrieved_at" timestamp to each result so history shows when it ran.
+        $decoded = json_decode($results, true);
+        $decoded['retrieved_at'] = date('c');
+        $entry = $decoded;
+
+        // Load existing history, append new entry, and save.
+        $history = load_history();
+        $history[] = $entry;
+        save_history($history);
+
+        // Output the newly produced result (including "retrieved_at").
+        echo json_encode($entry);
     } else {
         echo json_encode(null);
     }
+    exit;
+}
 
-} else {
-    // Read results from file
-    if (file_exists(SPEEDTEST_RESULT_FILE)) {
-        $stored = @file_get_contents(SPEEDTEST_RESULT_FILE);
-        $results = ($stored !== false) && is_object(json_decode($stored)) ? $stored : null;
+// If the "history" parameter is set, return the last 10 tests as a JSON array.
+if (isset($_REQUEST['history'])) {
+    $history = load_history();
+    header('Content-Type: application/json; charset=UTF-8');
+    echo json_encode($history);
+    exit;
+}
+
+//
+// In normal use (no POST with serverid & no history request):
+// Return only the most recent result (last element of history)
+// so the dashboard widget works as before.
+//
+$history = [];
+if (file_exists(SPEEDTEST_HISTORY_FILE)) {
+    $history = load_history();
+    if (count($history) > 0) {
+        $results = json_encode(end($history));
     } else {
         $results = null;
     }
+} else {
+    $results = null;
+}
 ?>
 <table class="table">
     <tr>
@@ -121,7 +181,7 @@ if (is_numeric($_REQUEST['serverid'])) {
         <td><h4 id="speedtest-upload">N/A</h4></td>
     </tr>
     <tr>
-        <td>Packetloss</td>
+        <td>Packet Loss</td>
         <td colspan="2" id="speedtest-packetloss">N/A</td>
     </tr>
     <tr>
@@ -134,10 +194,10 @@ if (is_numeric($_REQUEST['serverid'])) {
             <select name="speedtest-iface" id="speedtest-iface" style="width: 100%">
                 <option value="0.0.0.0">Auto</option>
 <?php
-                // build interface list for widget use
+                // Build interface list for widget use
                 $ifdescrs = get_configured_interface_with_descr();
 
-                // initially only WAN interfaces (have a gateway IP)
+                // First only WAN interfaces (have a gateway IP)
                 $filtered_ifdescrs = [];
                 foreach ($ifdescrs as $ifdescr => $ifname) {
                     $ifinfo = get_interface_info($ifdescr);
@@ -146,7 +206,7 @@ if (is_numeric($_REQUEST['serverid'])) {
                     }
                 }
 
-                // then additional VPN interfaces (tun/tap/ovpn)
+                // Then additional VPN interfaces (tun/tap/ovpn)
                 if (!empty($config['interfaces'])) {
                     foreach ($config['interfaces'] as $ifdescr => $ifcfg) {
                         if (isset($filtered_ifdescrs[$ifdescr])) {
@@ -160,7 +220,7 @@ if (is_numeric($_REQUEST['serverid'])) {
                     }
                 }
 
-                // Output of the filtered interfaces
+                // Output the filtered interfaces
                 foreach ($filtered_ifdescrs as $ifdescr => $ifname) {
                     $ifinfo = get_interface_info($ifdescr);
                     echo '<option value="' . htmlspecialchars($ifinfo['ipaddr']) . '">'
@@ -182,6 +242,72 @@ if (is_numeric($_REQUEST['serverid'])) {
         <td colspan="3" id="speedtest-ts" style="font-size: 0.8em;">&nbsp;</td>
     </tr>
 </table>
+
+<?php
+// Build a map from device name to interface description
+$ifdescrs = get_configured_interface_with_descr();
+$deviceToDescr = [];
+foreach ($ifdescrs as $ifdescr => $descr) {
+    $info = get_interface_info($ifdescr);
+    if (!empty($info['if'])) {
+        $deviceToDescr[$info['if']] = $descr;
+    }
+}
+
+// Display collapsible history below the main widget if available
+if (!empty($history)) {
+    echo '<h5><span id="toggleHistory" style="cursor:pointer;"><i class="fa fa-chevron-right"></i></span> Recent Speedtest Results</h5>';
+    echo '<div id="historyContent" style="display:none;">';
+    echo '<table class="table table-condensed">';
+    echo '<tr><th>Date<br>Time</th><th>Interface</th><th>Ping (ms)</th><th>Download (Mbps)</th><th>Upload (Mbps)</th><th></th></tr>';
+    // Iterate in reverse so newest entries appear first
+    foreach (array_reverse($history) as $entry) {
+        // Format the timestamp as "DD.MM.YYYY" on first line and "HH:MM:SS (GMT±H)" on second
+        $dtObj = new DateTime($entry['retrieved_at']);
+        $datePart = $dtObj->format('d.m.Y');
+        $timePart = $dtObj->format('H:i:s');
+        $offsetSec = $dtObj->getOffset();
+        $offsetHours = $offsetSec / 3600;
+        // Build the GMT offset string
+        $tzLabel = '(GMT' . ($offsetHours >= 0 ? '+' : '') . intval($offsetHours) . ')';
+
+        // Use <div> tags for separate lines
+        $dtDisplay = "<div>{$datePart}</div><div>{$timePart} {$tzLabel}</div>";
+
+        // Determine the user-friendly interface description
+        $deviceName = isset($entry['interface']['name']) ? $entry['interface']['name'] : '';
+        $ifaceLabel = isset($deviceToDescr[$deviceName]) ? htmlspecialchars($deviceToDescr[$deviceName]) : htmlspecialchars($deviceName);
+
+        $ping = isset($entry['ping']['latency'])
+            ? number_format($entry['ping']['latency'], 2)
+            : 'N/A';
+        $down = isset($entry['download']['bandwidth'])
+            ? number_format($entry['download']['bandwidth'] / 1000000 * 8, 2)
+            : 'N/A';
+        $up   = isset($entry['upload']['bandwidth'])
+            ? number_format($entry['upload']['bandwidth']   / 1000000 * 8, 2)
+            : 'N/A';
+        $url  = isset($entry['result']['url'])
+            ? htmlspecialchars($entry['result']['url'])
+            : '';
+        echo "<tr>\n";
+        echo "<td style=\"white-space: normal;\">{$dtDisplay}</td>";
+        echo "<td>{$ifaceLabel}</td>";
+        echo "<td>{$ping}</td>";
+        echo "<td>{$down}</td>";
+        echo "<td>{$up}</td>";
+        if ($url) {
+            echo "<td><a href=\"{$url}\" target=\"_blank\"><i class=\"fa fa-external-link\"></i></a></td>";
+        } else {
+            echo "<td></td>";
+        }
+        echo "</tr>\n";
+    }
+    echo '</table>';
+    echo '</div>';
+}
+?>
+
 <a id="updspeed" href="#" class="fa fa-refresh" style="display: none;"></a>
 <a id="Ookla" href="#" target="_blank" style="display: none;"> <i class="fa fa-external-link"></i></a>
 <script type="text/javascript">
@@ -265,6 +391,8 @@ function update_speedtest() {
         },
         success: function(data) {
             update_result(data);
+            // After a successful test, reload so history is updated
+            location.reload();
         },
         error: function() {
             update_result(null);
@@ -279,6 +407,13 @@ function update_speedtest() {
 }
 
 events.push(function() {
+    // Toggle behavior for the collapsible history
+    $('#toggleHistory').click(function() {
+        var icon = $(this).find('i');
+        $('#historyContent').slideToggle('fast');
+        icon.toggleClass('fa-chevron-right fa-chevron-down');
+    });
+
     var target = $("#updspeed").closest(".panel").find(".widget-heading-icon");
     $("#Ookla").prependTo(target);
     $("#updspeed").prependTo(target).show().click(function() {
@@ -288,4 +423,3 @@ events.push(function() {
     update_result(<?php echo ($results === null ? "null" : $results); ?>);
 });
 </script>
-<?php } ?>

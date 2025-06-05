@@ -14,7 +14,7 @@
  *     https://www.gnu.org/licenses/gpl-3.0.txt
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
+ * distributed under the License and agreed to in writing on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
@@ -64,6 +64,9 @@
 
 require_once("guiconfig.inc");
 
+// Path for saving the results in a separate file instead of in config.xml:
+define('SPEEDTEST_RESULT_FILE', '/var/db/speedtest_result.json');
+
 if (is_numeric($_REQUEST['serverid'])) {
     // COMPOSE INTERFACE SELECTION SWITCH (IF SPECIFIED BY THE USER)
     $ifaceipswitch = "";
@@ -90,17 +93,19 @@ if (is_numeric($_REQUEST['serverid'])) {
     }
 
     if (($results !== null) && (json_decode($results) !== null)) {
-        $config['widgets']['speedtest_result'] = $results;
-        write_config("Save speedtest results");
+        // Write the result to a file instead of config.xml
+        @file_put_contents(SPEEDTEST_RESULT_FILE, $results);
         echo $results;
     } else {
         echo json_encode(null);
     }
 
 } else {
-
-    $results = isset($config['widgets']['speedtest_result']) ? $config['widgets']['speedtest_result'] : null;
-    if (($results !== null) && (!is_object(json_decode($results)))) {
+    // Read results from file
+    if (file_exists(SPEEDTEST_RESULT_FILE)) {
+        $stored = @file_get_contents(SPEEDTEST_RESULT_FILE);
+        $results = ($stored !== false) && is_object(json_decode($stored)) ? $stored : null;
+    } else {
         $results = null;
     }
 ?>

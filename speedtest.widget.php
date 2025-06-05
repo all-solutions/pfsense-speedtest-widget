@@ -10,7 +10,7 @@
  * Copyright (c) 2025 all-solutions IT-Consulting (forked from Leon Straathof due to non mantained repo)
  *
  * Licensed under the GPL, Version 3.0 (the "License");
- * You may not use this file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     https://www.gnu.org/licenses/gpl-3.0.txt
@@ -274,10 +274,11 @@ if (!empty($history)) {
         $timePart = $timeIso;
 
         // Build the GMT offset label using the full offset string
-        $tzLabel = "(GMT" . $offsetRaw . ")";
+        $tzLabel = "(GMT{$offsetRaw})";
 
-        // Use <div> tags for separate lines
-        $dtDisplay = "<div>{$datePart}</div><div>{$timePart} {$tzLabel}</div>";
+        // Use <div> tags for separate lines, with smaller font-size
+        $dtDisplay = "<div style=\"font-size:0.8em;\">{$datePart}</div>"
+                   . "<div style=\"font-size:0.8em;\">{$timePart} {$tzLabel}</div>";
 
         // Determine the user-friendly interface description
         $deviceName = isset($entry['interface']['name']) ? $entry['interface']['name'] : '';

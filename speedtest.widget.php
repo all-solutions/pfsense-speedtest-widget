@@ -10,7 +10,7 @@
  * Copyright (c) 2025 all-solutions IT-Consulting (forked from Leon Straathof due to non mantained repo)
  *
  * Licensed under the GPL, Version 3.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     https://www.gnu.org/licenses/gpl-3.0.txt
@@ -107,19 +107,33 @@ if (is_numeric($_REQUEST['serverid'])) {
         $ifaceipswitch = " --ip=" . $_REQUEST['iface'];
     }
 
-    if ($_REQUEST['serverid'] == 0) {
+    // Determine server ID: if manual entry chosen, use manual field instead
+    $serverid = $_REQUEST['serverid'];
+    if ($serverid === "-1" && isset($_REQUEST['manualid']) && is_numeric($_REQUEST['manualid'])) {
+        $serverid = $_REQUEST['manualid'];
+    }
+
+    if ($serverid == 0) {
         // AUTOSELECT
         $results = shell_exec("speedtest -f json --selection-details --accept-license --accept-gdpr" . $ifaceipswitch);
     } else {
-        // MANUAL SERVER SELECTION
+        // MANUAL SERVER SELECTION OR MANUAL ID
         $serverlist = shell_exec("speedtest -f json --servers --accept-license --accept-gdpr" . $ifaceipswitch);
-        $results    = shell_exec("speedtest -f json --server-id=" . $_REQUEST['serverid'] . $ifaceipswitch . " --selection-details --accept-license --accept-gdpr");
+        $results    = shell_exec("speedtest -f json --server-id=" . $serverid . $ifaceipswitch . " --selection-details --accept-license --accept-gdpr");
+        // Attempt to decode the result
         $resultsobj = json_decode($results, true);
-        $serverlistobj = json_decode($serverlist, true);
 
+        // If decoding failed or no 'timestamp' field, treat as invalid host
+        if ($resultsobj === null || !isset($resultsobj['timestamp'])) {
+            echo json_encode(['error' => 'InvalidHost']);
+            exit;
+        }
+
+        // Populate serverSelection.servers for the UI
+        $serverlistobj = json_decode($serverlist, true);
         foreach ($serverlistobj['servers'] as &$server) {
             $latency = shell_exec("ping -c 1 -W 1 " . $server['host'] . " 2>&1 | awk -F'/' 'END{ print (/^round-trip/? $5:\"99999\") }'");
-            $server  = (object) ['latency' => (float)$latency, 'server' => $server];
+            $server  = (object)['latency' => (float)$latency, 'server' => $server];
         }
         $resultsobj['serverSelection']['servers'] = $serverlistobj['servers'];
         $results = json_encode($resultsobj);
@@ -139,7 +153,7 @@ if (is_numeric($_REQUEST['serverid'])) {
         // Output the newly produced result (including "retrieved_at").
         echo json_encode($entry);
     } else {
-        echo json_encode(null);
+        echo json_encode(['error' => 'InvalidHost']);
     }
     exit;
 }
@@ -235,7 +249,11 @@ if (file_exists(SPEEDTEST_HISTORY_FILE)) {
         <td colspan="2">
             <select name="speedtest-host" id="speedtest-host" style="width: 100%">
                 <option value="0">AUTOSELECT AND REFRESH CLOSEST SERVER LIST</option>
+                <option value="-1">ENTER SERVER-ID MANUALLY</option>
             </select>
+            <div id="manualHostContainer" style="display:none; margin-top:5px;">
+                <input type="text" id="speedtest-host-manual" placeholder="Enter the Server-ID" style="width:100%;"/>
+            </div>
         </td>
     </tr>
     <tr>
@@ -320,6 +338,15 @@ if (!empty($history)) {
 <a id="Ookla" href="#" target="_blank" style="display: none;"> <i class="fa fa-external-link"></i></a>
 <script type="text/javascript">
 function update_result(results) {
+    // Handle invalid-host error
+    if (results && results.error === 'InvalidHost') {
+        $("#speedtest-ts").html("Invalid Host");
+        $("#speedtest-ping, #speedtest-download, #speedtest-upload, #speedtest-packetloss, #speedtest-isp")
+            .html("N/A");
+        $("#Ookla").hide();
+        return;
+    }
+
     if (results != null) {
         var date = new Date(results.timestamp);
         $("#speedtest-ts").html(date);
@@ -340,10 +367,15 @@ function update_result(results) {
             : results.isp + "<small> (" + results.interface.externalIp + ")</small>");
 
         if (results.server === undefined) {
-            $('#speedtest-host').empty().append($('<option>', {
-                value: 0,
-                text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
-            }));
+            $('#speedtest-host').empty()
+                .append($('<option>', {
+                    value: 0,
+                    text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
+                }))
+                .append($('<option>', {
+                    value: -1,
+                    text: 'ENTER SERVER-ID MANUALLY'
+                }));
         } else {
             $('#speedtest-host').empty()
                 .append($('<option>', {
@@ -354,6 +386,10 @@ function update_result(results) {
                 .append($('<option>', {
                     value: 0,
                     text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
+                }))
+                .append($('<option>', {
+                    value: -1,
+                    text: 'ENTER SERVER-ID MANUALLY'
                 }));
             var servers = results.serverSelection.servers;
             servers.sort(function(a, b) {
@@ -377,10 +413,15 @@ function update_result(results) {
         $("#speedtest-ts").html("Speedtest failed");
         $("#speedtest-ping, #speedtest-download, #speedtest-upload, #speedtest-packetloss, #speedtest-isp")
             .html("N/A");
-        $('#speedtest-host').empty().append($('<option>', {
-            value: 0,
-            text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
-        }));
+        $('#speedtest-host').empty()
+            .append($('<option>', {
+                value: 0,
+                text: 'AUTOSELECT AND REFRESH CLOSEST SERVER LIST'
+            }))
+            .append($('<option>', {
+                value: -1,
+                text: 'ENTER SERVER-ID MANUALLY'
+            }));
     }
 }
 
@@ -389,21 +430,34 @@ function update_speedtest() {
         $('#updspeed').blur();
         return false;
     });
+    // Determine server ID: if manual entry chosen, read from manual input
+    var hostSelect = $("#speedtest-host").val();
+    var serverid = hostSelect;
+    if (hostSelect === "-1") {
+        var manual = $("#speedtest-host-manual").val();
+        if ($.isNumeric(manual)) {
+            serverid = manual;
+        } else {
+            // If manual ID is invalid, treat as a request that triggers "Invalid Host"
+            serverid = "-1";  // special flag to let PHP return error
+        }
+    }
     $.ajax({
         type: 'POST',
         url: "/widgets/widgets/speedtest.widget.php",
         dataType: 'json',
         data: {
-            serverid: $("#speedtest-host").val(),
-            iface:    $("#speedtest-iface").val()
+            serverid: serverid,
+            iface:    $("#speedtest-iface").val(),
+            manualid: $("#speedtest-host-manual").val()
         },
         success: function(data) {
             update_result(data);
-            // After a successful test, reload so history is updated
+            // After a successful or invalid-host test, reload so history or error is shown
             location.reload();
         },
         error: function() {
-            update_result(null);
+            update_result({ error: 'InvalidHost' });
         },
         complete: function() {
             $('#updspeed').off("click").removeClass("fa-spin").click(function() {
@@ -420,6 +474,15 @@ events.push(function() {
         var icon = $(this).find('i');
         $('#historyContent').slideToggle('fast');
         icon.toggleClass('fa-chevron-right fa-chevron-down');
+    });
+
+    // When the Host select changes, show or hide the manual input
+    $('#speedtest-host').change(function() {
+        if ($(this).val() === "-1") {
+            $('#manualHostContainer').slideDown('fast');
+        } else {
+            $('#manualHostContainer').slideUp('fast');
+        }
     });
 
     var target = $("#updspeed").closest(".panel").find(".widget-heading-icon");

@@ -262,21 +262,30 @@ if (!empty($history)) {
     echo '<tr><th>Date<br>Time</th><th>Interface</th><th>Ping (ms)</th><th>Download (Mbps)</th><th>Upload (Mbps)</th><th></th></tr>';
     // Iterate in reverse so newest entries appear first
     foreach (array_reverse($history) as $entry) {
-        // Format the timestamp as "DD.MM.YYYY" on first line and "HH:MM:SS (GMT±H)" on second
-        $dtObj = new DateTime($entry['retrieved_at']);
-        $datePart = $dtObj->format('d.m.Y');
-        $timePart = $dtObj->format('H:i:s');
-        $offsetSec = $dtObj->getOffset();
-        $offsetHours = $offsetSec / 3600;
-        // Build the GMT offset string
-        $tzLabel = '(GMT' . ($offsetHours >= 0 ? '+' : '') . intval($offsetHours) . ')';
+        // Extract date, time, and offset directly from the ISO8601 string
+        // Format is "YYYY-MM-DDTHH:MM:SS±HH:MM", e.g. "2025-06-05T14:17:51+02:00"
+        $raw = $entry['retrieved_at'];
+        $dateIso = substr($raw, 0, 10);           // "YYYY-MM-DD"
+        $timeIso = substr($raw, 11, 8);           // "HH:MM:SS"
+        $offsetRaw = substr($raw, 19, 6);         // "+02:00" or "-04:00"
+
+        // Convert date to "DD.MM.YYYY" and time stays "HH:MM:SS"
+        $datePart = date('d.m.Y', strtotime($dateIso));
+        $timePart = $timeIso;
+
+        // Convert "+02:00" or "-04:00" into "+2" or "-4"
+        $sign = substr($offsetRaw, 0, 1);
+        $hourOffset = intval(substr($offsetRaw, 1, 2)); // "02" → 2, "04" → 4
+        $tzLabel = "(GMT" . $sign . $hourOffset . ")";
 
         // Use <div> tags for separate lines
         $dtDisplay = "<div>{$datePart}</div><div>{$timePart} {$tzLabel}</div>";
 
         // Determine the user-friendly interface description
         $deviceName = isset($entry['interface']['name']) ? $entry['interface']['name'] : '';
-        $ifaceLabel = isset($deviceToDescr[$deviceName]) ? htmlspecialchars($deviceToDescr[$deviceName]) : htmlspecialchars($deviceName);
+        $ifaceLabel = isset($deviceToDescr[$deviceName])
+            ? htmlspecialchars($deviceToDescr[$deviceName])
+            : htmlspecialchars($deviceName);
 
         $ping = isset($entry['ping']['latency'])
             ? number_format($entry['ping']['latency'], 2)
@@ -285,7 +294,7 @@ if (!empty($history)) {
             ? number_format($entry['download']['bandwidth'] / 1000000 * 8, 2)
             : 'N/A';
         $up   = isset($entry['upload']['bandwidth'])
-            ? number_format($entry['upload']['bandwidth']   / 1000000 * 8, 2)
+            ? number_format($entry['upload']['bandwidth'] / 1000000 * 8, 2)
             : 'N/A';
         $url  = isset($entry['result']['url'])
             ? htmlspecialchars($entry['result']['url'])
@@ -423,3 +432,4 @@ events.push(function() {
     update_result(<?php echo ($results === null ? "null" : $results); ?>);
 });
 </script>
+

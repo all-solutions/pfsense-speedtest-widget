@@ -262,21 +262,19 @@ if (!empty($history)) {
     echo '<tr><th>Date<br>Time</th><th>Interface</th><th>Ping (ms)</th><th>Download (Mbps)</th><th>Upload (Mbps)</th><th></th></tr>';
     // Iterate in reverse so newest entries appear first
     foreach (array_reverse($history) as $entry) {
-        // Extract date, time, and offset directly from the ISO8601 string
+        // Extract date, time, and full offset directly from the ISO8601 string
         // Format is "YYYY-MM-DDTHH:MM:SS±HH:MM", e.g. "2025-06-05T14:17:51+02:00"
         $raw = $entry['retrieved_at'];
         $dateIso = substr($raw, 0, 10);           // "YYYY-MM-DD"
         $timeIso = substr($raw, 11, 8);           // "HH:MM:SS"
-        $offsetRaw = substr($raw, 19, 6);         // "+02:00" or "-04:00"
+        $offsetRaw = substr($raw, 19, 6);         // "+02:00", "-04:00", "+03:30", "+12:45", etc.
 
-        // Convert date to "DD.MM.YYYY" and time stays "HH:MM:SS"
+        // Convert date to "DD.MM.YYYY"
         $datePart = date('d.m.Y', strtotime($dateIso));
         $timePart = $timeIso;
 
-        // Convert "+02:00" or "-04:00" into "+2" or "-4"
-        $sign = substr($offsetRaw, 0, 1);
-        $hourOffset = intval(substr($offsetRaw, 1, 2)); // "02" → 2, "04" → 4
-        $tzLabel = "(GMT" . $sign . $hourOffset . ")";
+        // Build the GMT offset label using the full offset string
+        $tzLabel = "(GMT" . $offsetRaw . ")";
 
         // Use <div> tags for separate lines
         $dtDisplay = "<div>{$datePart}</div><div>{$timePart} {$tzLabel}</div>";
@@ -432,4 +430,3 @@ events.push(function() {
     update_result(<?php echo ($results === null ? "null" : $results); ?>);
 });
 </script>
-

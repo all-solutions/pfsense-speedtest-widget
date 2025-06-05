@@ -24,7 +24,7 @@ This new widget is made to replace a similar widget created in the past by Alon 
 
 - Go to https://www.speedtest.net/apps/cli
 
-- Scroll down, click under "Install Options" on FreeBSD and find the URL of newest version<br>(for pfSense with FreeBSD 14 use the FreeBSD 13 version of cli)
+- Scroll down, click under "Install Options" on FreeBSD and find the URL of newest version<br>(for pfSense with FreeBSD 14/15 use the FreeBSD 13 version of cli)
 
 - pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command: <br>
 (Use the URL found on the speedtest.net website and the FreeBSD version number in env ABI must match the version number in the URL)<br>

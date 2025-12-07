@@ -30,8 +30,13 @@ This new widget is made to replace a similar widget created in the past by Alon 
 (Use the URL found on the speedtest.net website and the FreeBSD version number in env ABI must match the version number in the URL)<br>
 There is a know conflict between the not offical speedtest-cli and the offical version from speedtest.net. You can not have both installed at the same time. See this reported issue: https://github.com/LeonStraathof/pfsense-speedtest-widget/issues/2
 ```	
-env ABI=FreeBSD:13:x86:64 pkg add "https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-freebsd13-x86_64.pkg"
+1.: env IGNORE_OSVERSION=yes pkg add --force "https://install.speedtest.net/app/cli/ookla-speedtest-1.2.0-freebsd13-x86_64.pkg"
+
+2.: rehash
 ```
+*(Thanks to [@ZeroDot1](https://github.com/ZeroDot1) for the instructions above)*
+
+
 - pfSense-main-menu-->Diagnotics-->Command Prompt-->Execute Shell Command:
 ```
 speedtest --accept-license
@@ -78,5 +83,6 @@ rm -f /usr/local/www/widgets/widgets/speedtest.widget.php
 ## TO-DO
 
 - ~~Try to implement VPN interfaces as speedtest gateways~~
+
 
 
